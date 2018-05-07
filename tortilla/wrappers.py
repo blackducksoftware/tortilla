@@ -225,9 +225,15 @@ class Client(object):
                 # TODO: This is set 'No response' for the debug message.
                 #       Extract this into a different variable so that
                 #       `parsed_response` is not ambiguous.
-                parsed_response = 'No response'
+                if method.lower() == 'head':
+                    return None
+                else:
+                    parsed_response = {}
             else:
                 parsed_response = formats.parse(response_format, r.text)
+            if method.lower() == 'post':
+                # Most RESTful POST (aka CREATE) endpoints add a Location header value which should be passed along
+                parsed_response.update({'Location': r.headers.get('Location', None)})
         except ValueError as e:
             # we've failed, raise this stuff when not silent
             if len(r.text) > DEBUG_MAX_TEXT_LENGTH:
@@ -253,11 +259,7 @@ class Client(object):
                   status_code=r.status_code, reason=r.reason,
                   text=parsed_response)
 
-        # return our findings and try to make it a bit nicer
-        if has_body:
-            return bunchify(parsed_response)
-        return None
-
+        return bunchify(parsed_response)
 
 class Wrap(object):
     """Represents a part of the wrapped URL.
@@ -408,7 +410,8 @@ class Wrap(object):
 
     def post(self, *parts, **options):
         """Executes a `POST` request on the currently formed URL."""
-        return self.request('post', *parts, **options)
+        response = self.request('post', *parts, **options)
+        return response
 
     def put(self, *parts, **options):
         """Executes a `PUT` request on the currently formed URL."""
